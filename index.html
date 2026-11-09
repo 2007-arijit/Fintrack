@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>FinTrack — Personal Finance Tracker</title>
+    <meta name="description" content="Track your income, expenses, budgets, and debts in one place." />
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Favicon / app icons (same mark used for browser favicon + installed app icon) -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/media/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/media/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="/media/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/media/icon-512.png" color="#0b0b0f" />
+
+    <!-- Theme / standalone display -->
+    <meta name="theme-color" content="#0c1220" />
+    <meta name="background-color" content="#0b0b0f" />
+    <meta name="color-scheme" content="dark light" />
+
+    <!-- iOS standalone / PWA behavior -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="FinTrack" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="FinTrack" />
+    <meta name="msapplication-TileColor" content="#0b0b0f" />
+    <meta name="msapplication-TileImage" content="/media/icon-192.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <meta property="og:title" content="FinTrack — Personal Finance Tracker" />
+    <meta property="og:description" content="Track your income, expenses, budgets, and debts in one place." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/media/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="FinTrack — Personal Finance Tracker" />
+    <meta name="twitter:description" content="Track your income, expenses, budgets, and debts in one place." />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
