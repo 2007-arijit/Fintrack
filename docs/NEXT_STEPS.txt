@@ -1,0 +1,27 @@
+FINTRACK — NEXT STEPS
+
+This package is the project source, not a deployed website.
+
+WHAT WAS UPDATED IN THIS PASS
+- Added a server-side is_user_blocked() check to parse-statement.
+- Added a server-side is_user_blocked() check to send-push.
+- Both functions fail closed (503) if account status cannot be checked and return 403 for blocked accounts.
+- delete-account was intentionally left unchanged so account deletion remains available.
+
+START THE APP LOCALLY
+1. Open this folder in VS Code (the folder containing package.json).
+2. Open Terminal > New Terminal.
+3. Run: npm install
+4. Run: npm run dev
+5. Open the localhost URL printed by Vite (usually http://localhost:5173).
+
+ENVIRONMENT
+- This ZIP intentionally excludes .env files.
+- If you already have your local .env from your previous project folder, copy it into this folder.
+- Otherwise copy .env.example to .env and fill in the Supabase Project URL and publishable/anon key from Supabase.
+- Never put a service_role key in a VITE_ variable or frontend .env.
+
+IMPORTANT
+- The two updated Edge Functions are source files only; they are not deployed automatically by copying this ZIP.
+- We will deploy them after confirming the app starts locally.
+- npm install / npm run build were not verified in this environment.
