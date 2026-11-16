@@ -7,6 +7,7 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { StatCard } from "@/components/StatCard";
 import { EmptyState } from "@/components/EmptyState";
 import { TransactionModal } from "@/components/TransactionModal";
+import { BuyChaiModal } from "@/components/BuyChaiModal";
 const ExpenseDonut = lazy(() =>
   import("@/components/charts/ExpenseDonut").then((m) => ({ default: m.ExpenseDonut })),
 );
@@ -51,6 +52,7 @@ export default function Dashboard() {
   const { carryForward } = useMonthlyBalance(transactions);
   const navigate = useNavigate();
   const [showAdd, setShowAdd] = useState(false);
+  const [showBuyChai, setShowBuyChai] = useState(false);
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
@@ -175,21 +177,20 @@ export default function Dashboard() {
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <a
-              href="https://buymeachai.in/arghya"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Buy me a chai"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative h-8 w-8 text-muted-foreground hover:text-amber-400 transition-colors"
+              title="Buy Arijit Koyal a chai"
+              aria-label="Buy Arijit Koyal a chai"
+              onClick={() => setShowBuyChai(true)}
             >
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-warning"
-                title="Buy me a chai"
-              >
-                <Coffee className="h-4 w-4" />
-              </Button>
-            </a>
+              <Coffee className="h-4 w-4" />
+              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+              </span>
+            </Button>
             <Link to="/settings" aria-label="Open settings">
               <Button
                 variant="ghost"
@@ -530,6 +531,11 @@ export default function Dashboard() {
         onOpenChange={setShowAdd}
         onSubmit={(data) => addTransaction.mutate(data)}
         loading={addTransaction.isPending}
+      />
+
+      <BuyChaiModal
+        open={showBuyChai}
+        onOpenChange={setShowBuyChai}
       />
     </div>
   );

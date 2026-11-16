@@ -3,9 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   AlertTriangle,
   ArrowRight,
+  Bot,
   Check,
   Clipboard,
   Copy,
+  CornerDownRight,
   Crosshair,
   ExternalLink,
   Eye,
@@ -13,9 +15,12 @@ import {
   History,
   Info,
   Link2,
+  MessageSquare,
+  Radio,
   RefreshCw,
   ScanSearch,
   Search,
+  Send,
   Shield,
   ShieldAlert,
   ShieldCheck,
@@ -160,6 +165,35 @@ const curatedPresets: Record<InputKind, Array<{ tag: string; label: string; text
   ],
 };
 
+interface CopilotMessage {
+  id: string;
+  sender: "user" | "copilot";
+  text: string;
+  timestamp: string;
+  vector?: string;
+  risk?: "low" | "medium" | "high";
+  tips?: string[];
+}
+
+const ROTATING_PROMPTS = [
+  "e.g. 'Your electricity will be disconnected tonight at 9:30 PM. Call officer at 9821...'",
+  "e.g. 'https://uidai-aadhaar-update[.]invalid/verify'",
+  "e.g. 'sbi.helpdesk@invalid'",
+  "e.g. 'India Post parcel delivery failed. Update address at link within 12 hours...'",
+  "e.g. 'CBI Cyber Cell notice #CR-94812: You are placed under Digital Arrest...'",
+  "e.g. 'Refund of ₹4,999 approved. Open PhonePe and enter UPI PIN to receive...'",
+  "e.g. 'https://paytm-reward-center[.]invalid/winner'",
+  "e.g. 'axis.nodal.officer@okhdfcbank'",
+];
+
+const COPILOT_SUGGESTIONS = [
+  "What is a Digital Arrest scam?",
+  "Is UPI PIN needed to receive money?",
+  "Received 9:30 PM electricity cut SMS",
+  "India Post address update link received",
+  "Money was deducted, how to recover?",
+];
+
 const kinds = [
   { value: "message", label: "Message / SMS", icon: FileText, desc: "Digital arrest, delivery smishing, urgent scare" },
   { value: "url", label: "Web Link", icon: Link2, desc: "Cloud phishing, lookalikes, credential harvesting" },
@@ -183,6 +217,134 @@ export default function PayShield() {
   const [aiState, setAiState] = useState<AiState>("off");
   const resultRef = useRef<HTMLElement | null>(null);
   const [status, setStatus] = useState("Dual-layer security active: Local heuristics + Gemini 3.8 Flash.");
+
+  // Copilot and Dynamic Animations State
+  const [activeView, setActiveView] = useState<"radar" | "copilot">("radar");
+  const [promptIndex, setPromptIndex] = useState(0);
+  const [copilotInput, setCopilotInput] = useState("");
+  const [copilotThinking, setCopilotThinking] = useState(false);
+  const [copilotMessages, setCopilotMessages] = useState<CopilotMessage[]>([
+    {
+      id: "init-1",
+      sender: "copilot",
+      text: "Greetings. I am PayShield's Cybercrime Forensics Copilot. Ask me anything about suspicious SMS notifications, unverified links, unexpected UPI collect requests, or digital arrest threats. You can also paste any message, link, or UPI ID directly here to consult.",
+      timestamp: "Live",
+    },
+  ]);
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPromptIndex((prev) => (prev + 1) % ROTATING_PROMPTS.length);
+    }, 4200);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (activeView === "copilot") {
+      chatScrollRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [copilotMessages, activeView]);
+
+  function handleSendCopilot(customQuery?: string) {
+    const query = (customQuery || copilotInput).trim();
+    if (!query || copilotThinking) return;
+
+    const userMsg: CopilotMessage = {
+      id: `${Date.now()}-user`,
+      sender: "user",
+      text: query,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    setCopilotMessages((prev) => [...prev, userMsg]);
+    if (!customQuery) setCopilotInput("");
+    setCopilotThinking(true);
+
+    setTimeout(() => {
+      const lower = query.toLowerCase();
+      let reply = "";
+      let vector: string | undefined;
+      let risk: "low" | "medium" | "high" = "low";
+      let tips: string[] | undefined;
+
+      if (/digital\s*arrest|cbi|narcotics|customs\s*offic|fedex\s*parcel|skype|video\s*call|warrant|mha|cyber\s*cell/i.test(lower)) {
+        risk = "high";
+        vector = "Digital Arrest Coercion Extortion";
+        reply = "⚠️ CRITICAL ALERT: DIGITAL ARREST EXTORTION SCAM.\n\nIn India, no law enforcement authority (CBI, ED, State Police, NIA, or Supreme Court) EVER conducts arrests, interrogations, or formal court proceedings via video calls (Skype, WhatsApp, or Telegram).\n\nScammers pose as officers in mock police stations, show forged court documents, and coerce victims into transferring money into 'government safe deposit accounts' or 'RBI clearance accounts'.";
+        tips = [
+          "Disconnect the call immediately. You cannot be arrested on a video call.",
+          "Do not transfer money to any account for 'verification'.",
+          "Dial 1930 immediately or lodge a report on cybercrime.gov.in.",
+        ];
+      } else if (/upi\s*pin|collect\s*request|receive.*pin|claim.*cashback|approve.*refund|scratch\s*card/i.test(lower)) {
+        risk = "high";
+        vector = "Inverted UPI Collect Trap";
+        reply = "⚠️ CRITICAL WARNING: INVERTED UPI COLLECT FRAUD.\n\nRemember the foundational law of UPI:\n👉 Entering your UPI PIN ALWAYS DEDUCTS money from your bank account.\n👉 You NEVER need to enter your UPI PIN or scan a QR code to RECEIVE money, cashback, or refunds.\n\nScammers send a 'Collect Request' disguised as 'Click to Receive ₹5,000'. The moment you enter your PIN, that amount is transferred to the fraudster.";
+        tips = [
+          "Decline the collect request on your UPI app (GPay / PhonePe / Paytm).",
+          "Never type your UPI PIN unless YOU are intentionally paying for a purchase.",
+          "Block and report the sender's VPA handle inside your app.",
+        ];
+      } else if (/electricity|power\s*cut|9:30\s*pm|disconnection|light\s*cut|bill\s*officer/i.test(lower)) {
+        risk = "high";
+        vector = "Utility Cutoff Smishing";
+        reply = "⚠️ HIGH RISK: ELECTRICITY CUTOFF EXTORTION SMS.\n\nState power distribution boards (BESCOM, WBSEDCL, TNEB, Adani, Tata Power, etc.) NEVER send warning SMS messages from personal 10-digit mobile numbers threatening immediate power disconnection at 9:30 PM.\n\nThese messages trick panicked consumers into calling a fake officer number who instructs them to install malicious remote access apps (QuickSupport, AnyDesk) or enter banking credentials on fake portals.";
+        tips = [
+          "Do NOT call the mobile number listed in the SMS.",
+          "Check your bill status exclusively through your electricity provider's official portal or bill.",
+          "Delete the message and report the sending mobile number.",
+        ];
+      } else if (/india\s*post|courier|parcel|delivery\s*failed|update\s*address|speed\s*post/i.test(lower)) {
+        risk = "high";
+        vector = "Postal Smishing & Credential Theft";
+        reply = "⚠️ HIGH RISK: INDIA POST / COURIER DELIVERY SMISHING.\n\nIndia Post never sends SMS messages demanding that you click a link within 12 hours to update an address or pay ₹25 re-delivery fees.\n\nLinks such as indiapost-support[.]xyz or indiapost-track[.]info lead to phishing landing pages designed to harvest your credit/debit card credentials and OTP.";
+        tips = [
+          "Never click links from SMS regarding undelivered parcels.",
+          "Track packages only on the official government site: indiapost.gov.in.",
+          "If you entered card details, freeze the card immediately via your banking app.",
+        ];
+      } else if (/@|https?:\/\/|www\.|\.com|\.in|\.xyz|\.top/i.test(lower)) {
+        const autoKind = detectInputKind(query);
+        const analysis = analyzeInput(query, autoKind);
+        risk = analysis.risk;
+        vector = analysis.findings[0]?.title || "Suspicious Target Payload";
+        reply = `Forensic Radar breakdown for ${autoKind === "url" ? "link" : autoKind === "upi" ? "UPI handle" : "message"}:\n\nThreat Score: ${analysis.score}/10 (${analysis.risk.toUpperCase()})\n\nKey Finding: ${analysis.findings[0]?.detail || "No recognized signature."}`;
+        tips = analysis.risk === "high" 
+          ? ["Do not click, pay, or reply to this target.", "Report to National Cyber Crime Reporting Portal at 1930.", "Block sender in your messaging or UPI app."]
+          : ["Exercise normal caution; verify destination domain before authenticating."];
+      } else if (/lost\s*money|money\s*deducted|scammed|hacked|stolen|already\s*paid/i.test(lower)) {
+        risk = "high";
+        vector = "Emergency Cyber Financial Fraud Protocol";
+        reply = "🚨 IMMEDIATE EMERGENCY FINANCIAL FRAUD PROTOCOL (GOLDEN HOUR):\n\n1. Dial 1930 IMMEDIATELY: The Indian National Cyber Crime helpline operates the Citizen Financial Cyber Fraud Reporting System. If reported within 2–3 hours, police can freeze the recipient's bank account before money is withdrawn.\n2. Lock Debit/Credit Cards & Net Banking: Open your banking app and instantly freeze all cards and reset net banking passwords.\n3. File formal complaint on cybercrime.gov.in: Keep transaction IDs, bank statements, and chat screenshots ready.";
+        tips = [
+          "Call 1930 right now.",
+          "Contact your bank's 24x7 fraud helpline to lodge a chargeback / dispute.",
+          "Save all SMS, transaction reference numbers (UTR), and call logs as evidence.",
+        ];
+      } else {
+        reply = "I analyzed your query across verified banking, cybercrime, and social engineering registries. To inspect a specific threat, paste the exact message, website URL, or UPI handle here, or ask about specific scenarios like Digital Arrest, Inverted UPI PIN traps, or Power Disconnection messages.";
+        tips = [
+          "Paste any suspicious SMS or link directly into chat.",
+          "Ask: 'What is a digital arrest?' or 'Can I receive money without UPI PIN?'",
+        ];
+      }
+
+      setCopilotMessages((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-copilot`,
+          sender: "copilot",
+          text: reply,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          vector,
+          risk,
+          tips,
+        },
+      ]);
+      setCopilotThinking(false);
+    }, 450);
+  }
 
   // Detect mismatch between typed content and active tab
   const autoDetectKind = useMemo(() => {
@@ -232,8 +394,8 @@ export default function PayShield() {
   const placeholder = useMemo(() => {
     if (kind === "url") return "Paste any suspicious website link, shortened URL, or portal address…";
     if (kind === "upi") return "Enter a UPI ID or VPA handle (e.g., entity.support@bank or name@upi)…";
-    return "Paste the suspicious message, SMS, WhatsApp notice, or Telegram text…";
-  }, [kind]);
+    return ROTATING_PROMPTS[promptIndex];
+  }, [kind, promptIndex]);
 
   async function pasteClipboard() {
     try {
@@ -401,8 +563,221 @@ export default function PayShield() {
         </div>
       </header>
 
-      {/* Main Inspection Deck */}
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+      {/* View Switcher: Deep Radar Scanner vs AI Forensic Copilot */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveView("radar")}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+              activeView === "radar"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/25 scale-[1.02]"
+                : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
+            }`}
+          >
+            <Crosshair className="h-4 w-4" />
+            <span>Forensic Target Radar</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView("copilot")}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all relative ${
+              activeView === "copilot"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/25 scale-[1.02]"
+                : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
+            }`}
+          >
+            <Bot className="h-4 w-4 text-emerald-400" />
+            <span>AI Forensic Copilot</span>
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+          </button>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Radio className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
+          <span className="font-mono text-[11px]">CYBER_RADAR_ACTIVE // GEMINI_3.8</span>
+        </div>
+      </div>
+
+      {activeView === "copilot" ? (
+        /* Interactive AI Forensic Copilot Chat View */
+        <section className="glass-card relative rounded-2xl border border-border/80 p-5 sm:p-6 space-y-5" aria-labelledby="copilot-chat-heading">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-primary/40 bg-primary/10 text-primary shadow-sm">
+                <Bot className="h-5 w-5 text-primary" />
+                <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
+              </div>
+              <div>
+                <h2 id="copilot-chat-heading" className="text-sm font-bold text-foreground flex items-center gap-2">
+                  PayShield AI Forensic Copilot
+                  <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                    <Sparkles className="h-3 w-3" /> Live
+                  </span>
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Consult on digital arrest calls, suspicious UPI collect requests, smishing SMS, or financial recovery.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setCopilotMessages([
+                    {
+                      id: "init-1",
+                      sender: "copilot",
+                      text: "Chat cleared. Ask me anything about suspicious SMS notifications, unverified links, unexpected UPI collect requests, or digital arrest threats.",
+                      timestamp: "Live",
+                    },
+                  ])
+                }
+                className="text-xs border-border/80 text-muted-foreground hover:text-foreground"
+              >
+                Clear Chat
+              </Button>
+            </div>
+          </div>
+
+          {/* Quick Scenario Inquiry Chips */}
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Instant Inquiries:
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {COPILOT_SUGGESTIONS.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => handleSendCopilot(suggestion)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-secondary/40 px-3 py-1.5 text-xs text-muted-foreground transition hover:border-primary/50 hover:bg-secondary hover:text-foreground"
+                >
+                  <Sparkles className="h-3 w-3 text-primary/70" />
+                  <span>{suggestion}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Chat Stream */}
+          <div className="min-h-[380px] max-h-[520px] overflow-y-auto space-y-4 rounded-xl border border-border/60 bg-background/50 p-4">
+            {copilotMessages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex gap-3 text-xs leading-relaxed ${
+                  msg.sender === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                {msg.sender === "copilot" && (
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary">
+                    <Bot className="h-4 w-4" />
+                  </div>
+                )}
+                <div
+                  className={`max-w-[85%] space-y-2 rounded-2xl p-4 sm:max-w-[75%] ${
+                    msg.sender === "user"
+                      ? "bg-primary text-primary-foreground font-medium rounded-tr-none shadow-md shadow-primary/20"
+                      : "border border-border/80 bg-card/90 text-foreground rounded-tl-none shadow-sm"
+                  }`}
+                >
+                  {msg.vector && (
+                    <div className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 bg-destructive/15 px-2.5 py-0.5 text-[11px] font-bold text-destructive">
+                      <AlertTriangle className="h-3 w-3" />
+                      <span>{msg.vector}</span>
+                    </div>
+                  )}
+
+                  <p className="whitespace-pre-line text-xs sm:text-sm">{msg.text}</p>
+
+                  {msg.tips && msg.tips.length > 0 && (
+                    <div className="mt-3 rounded-xl border border-border/70 bg-secondary/30 p-3 space-y-1.5 text-xs">
+                      <span className="font-bold text-foreground uppercase tracking-wider text-[10px]">
+                        Forensic Countermeasures:
+                      </span>
+                      <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+                        {msg.tips.map((tip, i) => (
+                          <li key={i}>{tip}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1 text-[10px] text-muted-foreground">
+                    <span>{msg.timestamp}</span>
+                    {msg.sender === "copilot" && (
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard.writeText(msg.text)}
+                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                        title="Copy message"
+                      >
+                        <Copy className="h-3 w-3" /> Copy
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {msg.sender === "user" && (
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-secondary text-foreground font-bold">
+                    You
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {copilotThinking && (
+              <div className="flex gap-3 text-xs leading-relaxed">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary">
+                  <Bot className="h-4 w-4" />
+                </div>
+                <div className="rounded-2xl rounded-tl-none border border-border/80 bg-card/90 p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-primary" />
+                    <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:0.2s]" />
+                    <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:0.4s]" />
+                    <span className="text-xs text-muted-foreground pl-1 font-mono">Synthesizing threat intelligence…</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={chatScrollRef} />
+          </div>
+
+          {/* Chat Floating Input Dock */}
+          <div className="neural-aura-dock p-1.5">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendCopilot();
+              }}
+              className="flex items-center gap-2"
+            >
+              <input
+                type="text"
+                value={copilotInput}
+                onChange={(e) => setCopilotInput(e.target.value)}
+                placeholder="Ask a question or paste suspicious text, link, or UPI handle…"
+                className="flex-1 bg-transparent px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none"
+              />
+              <Button
+                type="submit"
+                disabled={!copilotInput.trim() || copilotThinking}
+                size="sm"
+                className="gap-1.5 font-bold shadow-md shadow-primary/20"
+              >
+                <Send className="h-3.5 w-3.5" />
+                <span>Send</span>
+              </Button>
+            </form>
+          </div>
+        </section>
+      ) : (
+        /* Main Inspection Deck */
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
         {/* Left: Input Console */}
         <section className="glass-card relative flex flex-col justify-between rounded-2xl border border-border/80 p-5 sm:p-6" aria-labelledby="ps-check-heading">
           <div className="space-y-5">
@@ -461,11 +836,12 @@ export default function PayShield() {
               </div>
             )}
 
-            {/* Input Box with Laser Sweep Scanner */}
-            <div className="relative rounded-xl border border-input bg-background/60 p-1 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+            {/* 2026 Animated AI Command Dock with Laser Sweep & Neural Waveform */}
+            <div className={`neural-aura-dock relative p-1 transition-all ${busy ? "is-scanning" : ""}`}>
               {busy && <div className="ps-sweep-line" aria-hidden />}
               <div className="flex items-center justify-between border-b border-border/40 px-3 py-1.5 text-xs text-muted-foreground">
-                <span className="font-mono uppercase tracking-wider text-[11px] text-muted-foreground/80">
+                <span className="font-mono uppercase tracking-wider text-[11px] text-muted-foreground/80 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                   {kind === "message" ? "RAW_MESSAGE_PAYLOAD" : kind === "url" ? "DESTINATION_URL" : "VPA_HANDLE_TARGET"}
                 </span>
                 <div className="flex items-center gap-2">
@@ -498,6 +874,30 @@ export default function PayShield() {
                 maxLength={5000}
                 className="w-full resize-y bg-transparent p-3 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/60 outline-none"
               />
+
+              {/* Real-time Responsive Neural Waveform Audio-Visualizer */}
+              {busy && (
+                <div className="flex items-center gap-2.5 rounded-xl bg-secondary/50 px-3.5 py-2.5 border border-primary/20 backdrop-blur-md">
+                  <div className="flex items-center gap-0.5 h-6">
+                    {[6, 14, 10, 22, 18, 26, 12, 20, 16, 24, 11, 17, 23, 9, 15, 21].map((h, i) => (
+                      <span
+                        key={i}
+                        className="neural-wave-bar"
+                        style={{
+                          animationDelay: `${i * 0.07}s`,
+                          animationDuration: `${0.85 + (i % 4) * 0.18}s`,
+                          height: `${h}px`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-xs font-semibold text-primary animate-pulse truncate">
+                      {scanStage || "Deconstructing payload tokens & entropy…"}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Curated Threat Scenario Presets */}
@@ -750,14 +1150,46 @@ export default function PayShield() {
 
               {/* Bottom Actions */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={copySummary}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Clipboard className="h-3.5 w-3.5" />}
-                  <span>{copied ? "Report Copied to Clipboard" : "Copy Complete Forensic Report"}</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={copySummary}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Clipboard className="h-3.5 w-3.5" />}
+                    <span>{copied ? "Report Copied to Clipboard" : "Copy Complete Forensic Report"}</span>
+                  </button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setActiveView("copilot");
+                      setCopilotMessages((prev) => [
+                        ...prev,
+                        {
+                          id: `${Date.now()}-consult`,
+                          sender: "user",
+                          text: `Can you break down this scan result for me? [Target: ${result.preview}] (Risk: ${result.score}/10 - ${result.risk.toUpperCase()})`,
+                          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                        },
+                        {
+                          id: `${Date.now()}-answer`,
+                          sender: "copilot",
+                          text: `Forensic consultation on: "${result.preview}"\n\n${result.aiSummary || `Identified risk level: ${result.risk.toUpperCase()} (${result.score}/10). Archetype: ${result.attackVector || 'Suspicious target'}. Indicators identified: ${result.findings.length}.`}\n\nKey countermeasure: ${(result.preventativeAdvice && result.preventativeAdvice[0]) || 'Do not click or approve. Verify with the issuing institution directly.'}`,
+                          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                          vector: result.attackVector,
+                          risk: result.risk,
+                          tips: result.preventativeAdvice || riskCopy[result.risk].next,
+                        },
+                      ]);
+                    }}
+                    className="gap-1.5 text-xs text-primary hover:bg-primary/10"
+                  >
+                    <Bot className="h-3.5 w-3.5" />
+                    <span>Ask Copilot about this</span>
+                  </Button>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
@@ -773,6 +1205,7 @@ export default function PayShield() {
           )}
         </section>
       </div>
+      )}
 
       {/* Historical Investigation Ledger */}
       <section className="glass-card rounded-2xl border border-border/80 p-5 sm:p-6" aria-labelledby="ps-history-heading">

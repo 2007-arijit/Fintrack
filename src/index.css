@@ -521,6 +521,68 @@ html { scroll-behavior: smooth; }
   border-top: 1px solid hsl(var(--border) / 0.75);
 }
 
+/* Modern 2026 AI Command Dock & Neural Wave Animations */
+@keyframes neuralWave {
+  0%, 100% { height: 6px; opacity: 0.35; }
+  50% { height: 26px; opacity: 1; }
+}
+
+@keyframes neuralAuraShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes radarPing {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.18); opacity: 0.25; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+.neural-aura-dock {
+  position: relative;
+  border-radius: 1.25rem;
+  background: linear-gradient(135deg, hsl(220 20% 12% / 0.95), hsl(220 24% 9% / 0.98));
+  backdrop-filter: blur(16px);
+  box-shadow: 0 10px 40px -10px hsl(0 0% 0% / 0.5), inset 0 1px 1px hsl(0 0% 100% / 0.1);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.neural-aura-dock::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: 1.35rem;
+  padding: 1.5px;
+  background: linear-gradient(90deg, hsl(var(--primary) / 0.6), hsl(174 80% 50% / 0.5), hsl(270 70% 60% / 0.5), hsl(var(--primary) / 0.6));
+  background-size: 300% 300%;
+  animation: neuralAuraShift 8s ease infinite;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  opacity: 0.45;
+  transition: opacity 0.3s ease;
+}
+
+.neural-aura-dock:focus-within::before {
+  opacity: 1;
+}
+
+.neural-aura-dock.is-scanning::before {
+  opacity: 1;
+  animation-duration: 2.2s;
+  background: linear-gradient(90deg, hsl(174 100% 50%), hsl(var(--primary)), hsl(280 100% 70%), hsl(174 100% 50%));
+}
+
+.neural-wave-bar {
+  display: inline-block;
+  width: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(to top, hsl(var(--primary)), hsl(174 80% 60%));
+  animation: neuralWave 1.2s ease-in-out infinite;
+}
+
 /* Reduced motion: remove all decorative animation, keep state changes instant. */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
