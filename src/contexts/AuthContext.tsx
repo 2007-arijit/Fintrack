@@ -84,8 +84,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
+    // When requesting a reset link, determine the redirect destination:
+    // 1. On production (e.g. Vercel), window.location.origin is already the live website URL.
+    // 2. On localhost, if VITE_SITE_URL is defined, prioritize it so test emails sent to real
+    //    mailboxes don't break with "localhost refused to connect" on mobile/other devices.
+    const isLocalhost =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1" ||
+        window.location.hostname === "0.0.0.0");
+
+    const configuredSiteUrl =
+      import.meta.env.VITE_SITE_URL ||
+      import.meta.env.VITE_PUBLIC_SITE_URL ||
+      "";
+
+    const baseUrl =
+      isLocalhost && configuredSiteUrl
+        ? configuredSiteUrl.replace(/\/+$/, "")
+        : window.location.origin;
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${baseUrl}/reset-password`,
     });
     return { error: error as Error | null };
   };
