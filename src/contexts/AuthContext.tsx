@@ -94,15 +94,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.location.hostname === "127.0.0.1" ||
         window.location.hostname === "0.0.0.0");
 
+    const defaultProductionUrl = "https://fintrack-dusky-beta.vercel.app";
     const configuredSiteUrl =
       import.meta.env.VITE_SITE_URL ||
       import.meta.env.VITE_PUBLIC_SITE_URL ||
-      "";
+      defaultProductionUrl;
 
-    const baseUrl =
-      isLocalhost && configuredSiteUrl
-        ? configuredSiteUrl.replace(/\/+$/, "")
-        : window.location.origin;
+    const baseUrl = isLocalhost
+      ? configuredSiteUrl.replace(/\/+$/, "")
+      : window.location.origin;
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${baseUrl}/reset-password`,

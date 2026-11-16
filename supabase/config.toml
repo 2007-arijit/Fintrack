@@ -158,15 +158,15 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "https://fintrack.vercel.app"
+site_url = "https://fintrack-dusky-beta.vercel.app"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = [
+  "https://fintrack-dusky-beta.vercel.app/**",
+  "https://fintrack-dusky-beta.vercel.app",
   "https://*.vercel.app/**",
   "https://*.vercel.app",
-  "https://fintrack.vercel.app/**",
-  "https://fintrack.vercel.app",
   "http://localhost:5174/**",
   "http://localhost:5173/**",
   "http://localhost:5174",
