@@ -53,9 +53,17 @@ export default function Auth() {
     if (showForgot) {
       const { error } = await resetPassword(email);
       if (error) {
-        toast.error(error.message);
+        if (
+          error.message.toLowerCase().includes("rate limit") ||
+          error.message.toLowerCase().includes("too many requests") ||
+          error.message.toLowerCase().includes("frequency")
+        ) {
+          toast.error("Email rate limit reached. Please wait a few minutes before trying again.");
+        } else {
+          toast.error(error.message);
+        }
       } else {
-        toast.success("Password reset request sent! Check your inbox and spam folder.");
+        toast.success("Password reset link sent! Check your inbox (and spam folder) for the link.");
       }
       setLoading(false);
       return;

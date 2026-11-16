@@ -165,8 +165,14 @@ site_url = "https://fintrack.vercel.app"
 additional_redirect_urls = [
   "https://*.vercel.app/**",
   "https://*.vercel.app",
+  "https://fintrack.vercel.app/**",
+  "https://fintrack.vercel.app",
   "http://localhost:5174/**",
-  "http://localhost:5173/**"
+  "http://localhost:5173/**",
+  "http://localhost:5174",
+  "http://localhost:5173",
+  "http://localhost:3000/**",
+  "http://localhost:3000"
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
