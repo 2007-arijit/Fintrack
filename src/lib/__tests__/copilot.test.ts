@@ -10,7 +10,7 @@ test("Copilot: answers greetings and introduces capabilities", () => {
 
 test("Copilot: explains FinTrack platform and creator attribution", () => {
   const res = generateSmartCopilotResponse("what is fintrack and who created it?");
-  assert.ok(res.reply.includes("Arijit Koyal"));
+  assert.ok(res.reply.includes("Arijit Kayal"));
   assert.ok(res.reply.includes("Personal Ledger"));
   assert.ok(res.reply.includes("PayShield"));
 });

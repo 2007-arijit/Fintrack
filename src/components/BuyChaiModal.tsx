@@ -8,7 +8,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Coffee, Heart, Check, Copy, ExternalLink, Sparkles, Zap } from "lucide-react";
+import { Coffee, Heart, Check, Copy, ExternalLink, Sparkles, Zap, QrCode } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { useToast } from "@/hooks/use-toast";
 
 interface BuyChaiModalProps {
@@ -27,15 +28,16 @@ export function BuyChaiModal({ open, onOpenChange }: BuyChaiModalProps) {
   const [selectedAmount, setSelectedAmount] = useState<number>(50);
   const [customAmount, setCustomAmount] = useState<string>("");
   const [copied, setCopied] = useState(false);
+  const [showQr, setShowQr] = useState(true);
   const { toast } = useToast();
 
   const upiId = "arijitkayal118@okhdfcbank";
-  const creatorName = "Arijit Koyal";
-  const finalAmount = customAmount ? Number(customAmount) || selectedAmount : selectedAmount;
+  const creatorName = "Arijit Kayal";
+  const finalAmount = customAmount ? Math.max(1, Number(customAmount) || selectedAmount) : selectedAmount;
 
   const upiDeepLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(
     creatorName
-  )}&am=${finalAmount}&cu=INR&tn=${encodeURIComponent("Support FinTrack Dev - Arijit Koyal")}`;
+  )}&am=${finalAmount}&cu=INR&tn=${encodeURIComponent("Support FinTrack Dev - Arijit Kayal")}`;
 
   const handleCopyUpi = () => {
     navigator.clipboard.writeText(upiId);
@@ -47,22 +49,31 @@ export function BuyChaiModal({ open, onOpenChange }: BuyChaiModalProps) {
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const handleOpenUpiApp = () => {
+    // Attempt deep link navigation
+    window.location.href = upiDeepLink;
+    toast({
+      title: `Initiating ₹${finalAmount} Payment`,
+      description: "Opening UPI app... On desktop, simply scan the QR code above with Google Pay, PhonePe, or Paytm!",
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md border-border/80 bg-card/95 p-6 backdrop-blur-xl sm:rounded-2xl">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto border-border/80 bg-card/95 p-6 backdrop-blur-xl sm:rounded-2xl">
         <DialogHeader className="text-center sm:text-left">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-500 shadow-lg shadow-amber-500/10 sm:mx-0">
             <Coffee className="h-7 w-7 animate-bounce text-amber-400" />
           </div>
           <DialogTitle className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2 justify-center sm:justify-start">
-            Buy Arijit Koyal a Chai
+            Buy Arijit Kayal a Chai
             <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400">
               <Sparkles className="h-3 w-3" /> Creator
             </span>
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
             FinTrack is handcrafted and engineered by <strong>{creatorName}</strong>. If you love the platform,
-            financial insights, or PayShield threat protection, treat Arijit to a hot cup of chai to fuel the next update!
+            financial insights, or PayShield threat protection, treat Arijit to a hot cup of chai to fuel future innovations!
           </DialogDescription>
         </DialogHeader>
 
@@ -119,23 +130,40 @@ export function BuyChaiModal({ open, onOpenChange }: BuyChaiModalProps) {
             </div>
           </div>
 
-          {/* Pay & Copy Actions */}
-          <div className="space-y-2 pt-2">
-            <a
-              href={upiDeepLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full block"
+          {/* Live Dynamic UPI QR Code */}
+          <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-secondary/30 to-secondary/10 p-4 text-center space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400">
+                <QrCode className="h-4 w-4" />
+                <span>Instant Scan & Pay</span>
+              </div>
+              <span className="font-mono text-xs font-bold text-foreground bg-secondary/80 px-2 py-0.5 rounded-md">
+                ₹{finalAmount}
+              </span>
+            </div>
+
+            <div className="flex justify-center py-1">
+              <div className="rounded-xl bg-white p-3 shadow-md inline-block">
+                <QRCodeSVG value={upiDeepLink} size={156} level="M" />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Scan with <strong>Google Pay</strong>, <strong>PhonePe</strong>, <strong>Paytm</strong>, or any UPI app.
+            </p>
+          </div>
+
+          {/* Pay via UPI App Action */}
+          <div className="space-y-2 pt-1">
+            <Button
+              type="button"
+              onClick={handleOpenUpiApp}
+              className="w-full gap-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold hover:from-amber-600 hover:to-amber-700 shadow-md shadow-amber-500/20"
+              size="lg"
             >
-              <Button
-                type="button"
-                className="w-full gap-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold hover:from-amber-600 hover:to-amber-700 shadow-md shadow-amber-500/20"
-                size="lg"
-              >
-                <Zap className="h-4 w-4" />
-                Pay ₹{finalAmount} via UPI App
-              </Button>
-            </a>
+              <Zap className="h-4 w-4" />
+              Pay ₹{finalAmount} via UPI App
+            </Button>
 
             <div className="flex items-center gap-2">
               <Button
@@ -149,7 +177,7 @@ export function BuyChaiModal({ open, onOpenChange }: BuyChaiModalProps) {
               </Button>
 
               <a
-                href="https://buymeachai.in/arijitkoyal"
+                href="https://buymeachai.in/arijitkayal"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1"
@@ -166,11 +194,11 @@ export function BuyChaiModal({ open, onOpenChange }: BuyChaiModalProps) {
             </div>
           </div>
 
-          {/* Verification Badge */}
+          {/* Creator Attribution Footnote */}
           <div className="flex items-center justify-center gap-2 rounded-xl border border-border/50 bg-secondary/20 p-2.5 text-center text-[11px] text-muted-foreground">
             <Heart className="h-3.5 w-3.5 fill-amber-500/20 text-amber-500 shrink-0" />
             <span>
-              100% of proceeds go directly to <strong>{creatorName}</strong> to keep FinTrack ad-free and open.
+              Directly supports <strong>{creatorName}</strong> to keep FinTrack independent and open.
             </span>
           </div>
         </div>

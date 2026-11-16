@@ -49,9 +49,9 @@ export function generateSmartCopilotResponse(
   // 3. FinTrack Application Questions
   if (/what is fintrack|about fintrack|how does fintrack work|splitwise|ledger|who built|creator|arijit/i.test(lower)) {
     return {
-      reply: `FinTrack is a full-featured personal finance and shared expense operating system crafted by **Arijit Koyal**.\n\nKey Capabilities:\n1. **Personal Ledger**: Real-time monthly balance, income/expense tracking, category breakdown, carry-forward liquidity.\n2. **Split & Groups**: Splitwise-grade group bill splitting with zero-loss integer math and debt simplification.\n3. **PayShield**: Multi-layer forensic threat detection for malicious links, deceptive UPI IDs, and cybercrime coercion tactics.\n4. **Private Architecture**: Built on Supabase with zero external logging of private financial entries.`,
+      reply: `FinTrack is a full-featured personal finance and shared expense operating system crafted by **Arijit Kayal**.\n\nKey Capabilities:\n1. **Personal Ledger**: Real-time monthly balance, income/expense tracking, category breakdown, carry-forward liquidity.\n2. **Split & Groups**: Splitwise-grade group bill splitting with zero-loss integer math and debt simplification.\n3. **PayShield**: Multi-layer forensic threat detection for malicious links, deceptive UPI IDs, and cybercrime coercion tactics.\n4. **Private Architecture**: Built on Supabase with zero external logging of private financial entries.`,
       tips: [
-        "Use the cup button on the top toolbar to support the creator, Arijit Koyal!",
+        "Use the cup button on the top toolbar to support the creator, Arijit Kayal!",
         "Switch to the 'Forensic Target Radar' tab to run comprehensive URL/UPI scans.",
       ],
     };

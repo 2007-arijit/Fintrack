@@ -181,8 +181,8 @@ export default function Dashboard() {
               variant="ghost"
               size="icon"
               className="relative h-8 w-8 text-muted-foreground hover:text-amber-400 transition-colors"
-              title="Buy Arijit Koyal a chai"
-              aria-label="Buy Arijit Koyal a chai"
+              title="Buy Arijit Kayal a chai"
+              aria-label="Buy Arijit Kayal a chai"
               onClick={() => setShowBuyChai(true)}
             >
               <Coffee className="h-4 w-4" />
