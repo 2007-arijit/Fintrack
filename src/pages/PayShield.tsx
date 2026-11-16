@@ -51,6 +51,7 @@ import {
   type InputKind,
   type ScanResult,
 } from "@/lib/payshieldEngine";
+import { generateSmartCopilotResponse } from "@/lib/copilotEngine";
 
 // Recharts loads dynamically only when scan history is shown
 const ScanTrends = lazy(() => import("@/components/payshield/ScanTrends"));
@@ -246,7 +247,7 @@ export default function PayShield() {
     }
   }, [copilotMessages, activeView]);
 
-  function handleSendCopilot(customQuery?: string) {
+  async function handleSendCopilot(customQuery?: string) {
     const query = (customQuery || copilotInput).trim();
     if (!query || copilotThinking) return;
 
@@ -261,89 +262,56 @@ export default function PayShield() {
     if (!customQuery) setCopilotInput("");
     setCopilotThinking(true);
 
-    setTimeout(() => {
-      const lower = query.toLowerCase();
-      let reply = "";
-      let vector: string | undefined;
-      let risk: "low" | "medium" | "high" = "low";
-      let tips: string[] | undefined;
+    // Baseline response from comprehensive local engine
+    const local = generateSmartCopilotResponse(
+      query,
+      result
+        ? {
+            preview: result.preview,
+            risk: result.risk,
+            score: result.score,
+            vector: result.attackVector,
+          }
+        : undefined
+    );
 
-      if (/digital\s*arrest|cbi|narcotics|customs\s*offic|fedex\s*parcel|skype|video\s*call|warrant|mha|cyber\s*cell/i.test(lower)) {
-        risk = "high";
-        vector = "Digital Arrest Coercion Extortion";
-        reply = "⚠️ CRITICAL ALERT: DIGITAL ARREST EXTORTION SCAM.\n\nIn India, no law enforcement authority (CBI, ED, State Police, NIA, or Supreme Court) EVER conducts arrests, interrogations, or formal court proceedings via video calls (Skype, WhatsApp, or Telegram).\n\nScammers pose as officers in mock police stations, show forged court documents, and coerce victims into transferring money into 'government safe deposit accounts' or 'RBI clearance accounts'.";
-        tips = [
-          "Disconnect the call immediately. You cannot be arrested on a video call.",
-          "Do not transfer money to any account for 'verification'.",
-          "Dial 1930 immediately or lodge a report on cybercrime.gov.in.",
-        ];
-      } else if (/upi\s*pin|collect\s*request|receive.*pin|claim.*cashback|approve.*refund|scratch\s*card/i.test(lower)) {
-        risk = "high";
-        vector = "Inverted UPI Collect Trap";
-        reply = "⚠️ CRITICAL WARNING: INVERTED UPI COLLECT FRAUD.\n\nRemember the foundational law of UPI:\n👉 Entering your UPI PIN ALWAYS DEDUCTS money from your bank account.\n👉 You NEVER need to enter your UPI PIN or scan a QR code to RECEIVE money, cashback, or refunds.\n\nScammers send a 'Collect Request' disguised as 'Click to Receive ₹5,000'. The moment you enter your PIN, that amount is transferred to the fraudster.";
-        tips = [
-          "Decline the collect request on your UPI app (GPay / PhonePe / Paytm).",
-          "Never type your UPI PIN unless YOU are intentionally paying for a purchase.",
-          "Block and report the sender's VPA handle inside your app.",
-        ];
-      } else if (/electricity|power\s*cut|9:30\s*pm|disconnection|light\s*cut|bill\s*officer/i.test(lower)) {
-        risk = "high";
-        vector = "Utility Cutoff Smishing";
-        reply = "⚠️ HIGH RISK: ELECTRICITY CUTOFF EXTORTION SMS.\n\nState power distribution boards (BESCOM, WBSEDCL, TNEB, Adani, Tata Power, etc.) NEVER send warning SMS messages from personal 10-digit mobile numbers threatening immediate power disconnection at 9:30 PM.\n\nThese messages trick panicked consumers into calling a fake officer number who instructs them to install malicious remote access apps (QuickSupport, AnyDesk) or enter banking credentials on fake portals.";
-        tips = [
-          "Do NOT call the mobile number listed in the SMS.",
-          "Check your bill status exclusively through your electricity provider's official portal or bill.",
-          "Delete the message and report the sending mobile number.",
-        ];
-      } else if (/india\s*post|courier|parcel|delivery\s*failed|update\s*address|speed\s*post/i.test(lower)) {
-        risk = "high";
-        vector = "Postal Smishing & Credential Theft";
-        reply = "⚠️ HIGH RISK: INDIA POST / COURIER DELIVERY SMISHING.\n\nIndia Post never sends SMS messages demanding that you click a link within 12 hours to update an address or pay ₹25 re-delivery fees.\n\nLinks such as indiapost-support[.]xyz or indiapost-track[.]info lead to phishing landing pages designed to harvest your credit/debit card credentials and OTP.";
-        tips = [
-          "Never click links from SMS regarding undelivered parcels.",
-          "Track packages only on the official government site: indiapost.gov.in.",
-          "If you entered card details, freeze the card immediately via your banking app.",
-        ];
-      } else if (/@|https?:\/\/|www\.|\.com|\.in|\.xyz|\.top/i.test(lower)) {
-        const autoKind = detectInputKind(query);
-        const analysis = analyzeInput(query, autoKind);
-        risk = analysis.risk;
-        vector = analysis.findings[0]?.title || "Suspicious Target Payload";
-        reply = `Forensic Radar breakdown for ${autoKind === "url" ? "link" : autoKind === "upi" ? "UPI handle" : "message"}:\n\nThreat Score: ${analysis.score}/10 (${analysis.risk.toUpperCase()})\n\nKey Finding: ${analysis.findings[0]?.detail || "No recognized signature."}`;
-        tips = analysis.risk === "high" 
-          ? ["Do not click, pay, or reply to this target.", "Report to National Cyber Crime Reporting Portal at 1930.", "Block sender in your messaging or UPI app."]
-          : ["Exercise normal caution; verify destination domain before authenticating."];
-      } else if (/lost\s*money|money\s*deducted|scammed|hacked|stolen|already\s*paid/i.test(lower)) {
-        risk = "high";
-        vector = "Emergency Cyber Financial Fraud Protocol";
-        reply = "🚨 IMMEDIATE EMERGENCY FINANCIAL FRAUD PROTOCOL (GOLDEN HOUR):\n\n1. Dial 1930 IMMEDIATELY: The Indian National Cyber Crime helpline operates the Citizen Financial Cyber Fraud Reporting System. If reported within 2–3 hours, police can freeze the recipient's bank account before money is withdrawn.\n2. Lock Debit/Credit Cards & Net Banking: Open your banking app and instantly freeze all cards and reset net banking passwords.\n3. File formal complaint on cybercrime.gov.in: Keep transaction IDs, bank statements, and chat screenshots ready.";
-        tips = [
-          "Call 1930 right now.",
-          "Contact your bank's 24x7 fraud helpline to lodge a chargeback / dispute.",
-          "Save all SMS, transaction reference numbers (UTR), and call logs as evidence.",
-        ];
-      } else {
-        reply = "I analyzed your query across verified banking, cybercrime, and social engineering registries. To inspect a specific threat, paste the exact message, website URL, or UPI handle here, or ask about specific scenarios like Digital Arrest, Inverted UPI PIN traps, or Power Disconnection messages.";
-        tips = [
-          "Paste any suspicious SMS or link directly into chat.",
-          "Ask: 'What is a digital arrest?' or 'Can I receive money without UPI PIN?'",
-        ];
+    let finalReply = local.reply;
+    let finalVector = local.vector;
+    let finalRisk = local.risk;
+    let finalTips = local.tips;
+
+    // If AI is active, attempt to synthesize with Gemini Edge Function
+    if (aiConsent) {
+      try {
+        const { data: aiData, error: aiError } = await supabase.functions.invoke("payshield-analyze", {
+          body: {
+            mode: "chat",
+            query,
+            history: copilotMessages.slice(-6).map((m) => ({ sender: m.sender, text: m.text })),
+          },
+        });
+
+        if (!aiError && aiData?.reply && typeof aiData.reply === "string") {
+          finalReply = aiData.reply;
+        }
+      } catch {
+        // Smoothly fall back to local intelligent engine
       }
+    }
 
-      setCopilotMessages((prev) => [
-        ...prev,
-        {
-          id: `${Date.now()}-copilot`,
-          sender: "copilot",
-          text: reply,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          vector,
-          risk,
-          tips,
-        },
-      ]);
-      setCopilotThinking(false);
-    }, 450);
+    setCopilotMessages((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-copilot`,
+        sender: "copilot",
+        text: finalReply,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        vector: finalVector,
+        risk: finalRisk,
+        tips: finalTips,
+      },
+    ]);
+    setCopilotThinking(false);
   }
 
   // Detect mismatch between typed content and active tab

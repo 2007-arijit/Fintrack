@@ -52,6 +52,61 @@ Deno.serve(async (req) => {
     if (blocked === true) return json({ error: "This account is temporarily blocked from using PayShield." }, 403);
 
     const body = await req.json();
+
+    // Mode: Conversational AI Copilot Chat
+    if (body.mode === "chat") {
+      const query = typeof body.query === "string" ? body.query.trim() : "";
+      if (!query || query.length > 4000) return json({ error: "Query must contain 1–4000 characters." }, 400);
+
+      const conversationHistory = Array.isArray(body.history) ? body.history.slice(-8) : [];
+      const systemInstruction = `You are FinTrack PayShield AI Copilot — an elite cybercrime forensics investigator, cybersecurity advisor, and personal finance expert.
+You can converse naturally and fluidly in any language (English, Hinglish, casual phrasing) on any topic:
+1. For general conversation or queries about personal finance, budgeting, banking rules, how UPI works, cybersecurity best practices, or FinTrack features: Provide clear, warm, engaging, and genuinely useful advice.
+2. For suspicious messages, links, UPI handles, calls, or scams (Digital Arrest, 9:30 PM power cutoff, Inverted UPI PIN collect, India Post delivery smishing, Telegram task scams, loan apps):
+   - Assess immediately if it is a SCAM and assign Risk Level (LOW, MEDIUM, or HIGH).
+   - Identify the specific psychological or technical exploitation technique.
+   - Give direct, bulleted emergency countermeasures (e.g. 'Never enter UPI PIN to receive money', 'Disconnect Skype call immediately', 'Call 1930', 'Freeze card in banking app').
+Keep formatting clean with clear bullet points and bold headers.`;
+
+      const contents = [
+        ...conversationHistory.map((m: any) => ({
+          role: m.sender === "user" ? "user" : "model",
+          parts: [{ text: String(m.text || "") }],
+        })),
+        {
+          role: "user",
+          parts: [{ text: query }],
+        },
+      ];
+
+      const aiResponse = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=" + encodeURIComponent(geminiKey),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents,
+            generationConfig: {
+              temperature: 0.35,
+              maxOutputTokens: 1200,
+            },
+          }),
+        },
+      );
+
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        console.error("Gemini chat error:", aiResponse.status, errorText.slice(0, 300));
+        return json({ error: "AI service temporarily unavailable." }, 502);
+      }
+
+      const aiJson = await aiResponse.json();
+      const replyText = aiJson?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ?? "";
+      return json({ reply: replyText });
+    }
+
+    // Mode: Forensic Radar Scan Analysis
     const scanId = typeof body.scan_id === "string" ? body.scan_id : "";
     const kind = body.kind;
     const input = typeof body.input === "string" ? body.input.trim() : "";
