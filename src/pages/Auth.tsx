@@ -52,8 +52,11 @@ export default function Auth() {
 
     if (showForgot) {
       const { error } = await resetPassword(email);
-      if (error) toast.error(error.message);
-      else toast.success("Password reset email sent! Check your inbox.");
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success("Password reset request sent! Check your inbox and spam folder.");
+      }
       setLoading(false);
       return;
     }
@@ -63,9 +66,17 @@ export default function Auth() {
       : await signUp(email, password, displayName);
 
     if (error) {
-      toast.error(error.message);
+      if (error.message.toLowerCase().includes("invalid login credentials")) {
+        toast.error("Invalid login credentials. If your email was unconfirmed, check your spam or reset your password.");
+      } else if (error.message.toLowerCase().includes("email not confirmed")) {
+        toast.error("Email not confirmed yet. Check your spam folder or turn 'Confirm email' OFF in Supabase.");
+      } else if (error.message.toLowerCase().includes("rate limit")) {
+        toast.error("Supabase email rate limit exceeded. Please wait a few minutes or toggle 'Confirm email' OFF in Supabase.");
+      } else {
+        toast.error(error.message);
+      }
     } else if (!isLogin) {
-      toast.success("Check your email to confirm your account!");
+      toast.success("Account created successfully! Welcome to FinTrack.");
     }
     setLoading(false);
   };
