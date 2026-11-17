@@ -51,16 +51,10 @@ export default function Auth() {
   const [showIntro, setShowIntro] = useState(() => {
     if (typeof window === "undefined") return false;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("skip_intro") === "true") return false;
-    const lastViewed = sessionStorage.getItem("fintrack_intro_viewed_at");
-    if (lastViewed && Date.now() - Number(lastViewed) < 45000) {
-      return false;
-    }
-    return true;
+    return params.get("skip_intro") !== "true";
   });
 
   const handleIntroComplete = () => {
-    sessionStorage.setItem("fintrack_intro_viewed_at", Date.now().toString());
     setShowIntro(false);
   };
 

@@ -13,7 +13,8 @@ interface FinancialRainTimelineProps {
 }
 
 const FINTRACK_GLYPHS = "₹$€£¥₹$€0123456789%+-•*₹0123456789$9876543210";
-const GLYPHS_PER_STREAM = 18;
+const GLYPHS_PER_BLOCK_DESKTOP = 38;
+const GLYPHS_PER_BLOCK_MOBILE = 28;
 
 function mulberry32(seed: number) {
   let a = seed;
@@ -162,39 +163,63 @@ export function FinancialRainTimeline({
   // Fast-paced rain columns
   const streams = useMemo<StreamData[]>(() => {
     const rand = mulberry32(20261117);
+    const glyphsCount = columnCount <= 12 ? GLYPHS_PER_BLOCK_MOBILE : GLYPHS_PER_BLOCK_DESKTOP;
+
     return Array.from({ length: columnCount }, (_, colIdx) => {
       const isTealStream = colIdx % 5 === 2;
 
-      const glyphs: GlyphData[] = Array.from({ length: GLYPHS_PER_STREAM }, (_, gIdx) => {
+      // Generate structured rain streaks (droplet head + tapering luminous tail)
+      const glyphs: GlyphData[] = Array.from({ length: glyphsCount }, (_, gIdx) => {
         const isTeal = isTealStream && rand() > 0.35;
-        // The first and middle glyphs act as leading glowing droplets
-        const isLead = gIdx === 0 || gIdx === 9;
-        const opacity = isLead ? 1 : Number((0.2 + (gIdx / GLYPHS_PER_STREAM) * 0.7).toFixed(2));
+        // Periodic leading droplets every ~9-11 glyphs
+        const streakPos = gIdx % 10;
+        const isLead = streakPos === 0;
+        let opacity = 0.25;
+        let light = 38;
+        let glowPx = 0;
+
+        if (isLead) {
+          opacity = 1.0;
+          light = 95;
+          glowPx = 14;
+        } else if (streakPos <= 2) {
+          opacity = 0.88;
+          light = 75;
+          glowPx = 8;
+        } else if (streakPos <= 5) {
+          opacity = 0.6;
+          light = 55;
+          glowPx = 4;
+        } else {
+          opacity = Number((0.18 + rand() * 0.2).toFixed(2));
+          light = Number((34 + rand() * 18).toFixed(1));
+          glowPx = 0;
+        }
 
         return {
           char: FINTRACK_GLYPHS[Math.floor(rand() * FINTRACK_GLYPHS.length)],
-          sizePx: Number((11 + rand() * 10).toFixed(1)),
-          lineHeight: Number((0.9 + rand() * 0.3).toFixed(2)),
-          scale: Number((0.95 + rand() * 0.35).toFixed(2)),
-          flip: Number(((rand() > 0.5 ? 1 : -1) * (0.8 + rand() * 0.2)).toFixed(2)),
-          glowPx: isLead ? 12 : Number((opacity > 0.6 ? 4 + rand() * 6 : 0).toFixed(1)),
+          sizePx: Number((12 + rand() * 9).toFixed(1)),
+          lineHeight: Number((0.95 + rand() * 0.2).toFixed(2)),
+          scale: isLead ? 1.15 : Number((0.95 + rand() * 0.25).toFixed(2)),
+          flip: Number(((rand() > 0.5 ? 1 : -1) * (0.85 + rand() * 0.15)).toFixed(2)),
+          glowPx,
           opacity,
-          light: isLead ? 92 : Number((36 + rand() * 26).toFixed(1)),
+          light,
           hue: isTeal ? 156 : 38 + Math.floor(rand() * 8),
           sat: isTeal ? "55%" : "92%",
           isLead,
         };
       });
 
-      // Fast rainfall: 1.2s to 2.2s per complete fall cycle
-      const fallDuration = Number((1.2 + rand() * 1.0).toFixed(2));
+      // Fast rainfall: 0.9s to 1.6s per complete fall cycle across the viewport
+      const fallDuration = Number((0.9 + rand() * 0.7).toFixed(2));
       // Pre-seed negative delay so rain is actively falling across the whole screen on mount
       const fallDelay = Number((-rand() * fallDuration).toFixed(2));
 
       return {
         id: colIdx,
-        delay: Number((rand() * 0.25).toFixed(2)),
-        opacity: Number((0.65 + rand() * 0.35).toFixed(2)),
+        delay: Number((rand() * 0.18).toFixed(2)),
+        opacity: Number((0.7 + rand() * 0.3).toFixed(2)),
         fallDuration,
         fallDelay,
         pulse: rand() > 0.75,
@@ -277,8 +302,8 @@ export function FinancialRainTimeline({
       {/* Rain layer — Hardware-accelerated CSS compositor transforms */}
       <div className="ft-rain-layer pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         {streams.map((stream) => {
-          // Double stacking for infinite, perfectly seamless cascading loop
-          const loopGlyphs = [...stream.glyphs, ...stream.glyphs];
+          // Double stacking two viewport-spanning blocks for an infinite, seamlessly cascading rainfall loop
+          const streamBlocks = [stream.glyphs, stream.glyphs];
           return (
             <div
               key={stream.id}
@@ -302,27 +327,31 @@ export function FinancialRainTimeline({
                   } as React.CSSProperties
                 }
               >
-                {loopGlyphs.map((g, gIdx) => (
-                  <span
-                    key={gIdx}
-                    className="ft-rain-glyph"
-                    data-lead={g.isLead ? "true" : undefined}
-                    style={
-                      {
-                        "--g-size": `${g.sizePx}px`,
-                        "--g-lh": g.lineHeight,
-                        "--g-scale": g.scale,
-                        "--g-flip": g.flip,
-                        "--g-glow": `${g.glowPx}px`,
-                        "--g-op": g.opacity,
-                        "--g-light": `${g.light}%`,
-                        "--g-hue": g.hue,
-                        "--g-sat": g.sat,
-                      } as React.CSSProperties
-                    }
-                  >
-                    {g.char}
-                  </span>
+                {streamBlocks.map((block, bIdx) => (
+                  <div key={bIdx} className="ft-rain-stream-block" aria-hidden="true">
+                    {block.map((g, gIdx) => (
+                      <span
+                        key={gIdx}
+                        className="ft-rain-glyph"
+                        data-lead={g.isLead ? "true" : undefined}
+                        style={
+                          {
+                            "--g-size": `${g.sizePx}px`,
+                            "--g-lh": g.lineHeight,
+                            "--g-scale": g.scale,
+                            "--g-flip": g.flip,
+                            "--g-glow": `${g.glowPx}px`,
+                            "--g-op": g.opacity,
+                            "--g-light": `${g.light}%`,
+                            "--g-hue": g.hue,
+                            "--g-sat": g.sat,
+                          } as React.CSSProperties
+                        }
+                      >
+                        {g.char}
+                      </span>
+                    ))}
+                  </div>
                 ))}
               </div>
             </div>

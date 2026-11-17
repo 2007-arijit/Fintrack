@@ -80,8 +80,20 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  animation: ft-rain-fall var(--fall-dur, 1.8s) linear var(--fall-delay, 0s) infinite;
+  animation: ft-rain-fall var(--fall-dur, 1.4s) linear var(--fall-delay, 0s) infinite;
   will-change: transform;
+}
+
+/* Each block spans the full viewport height to guarantee seamless edge-to-edge coverage */
+.ft-rain-stream-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  flex-shrink: 0;
 }
 
 @keyframes ft-rain-fall {
@@ -95,7 +107,7 @@
 
 .ft-rain-stream-inner[data-pulse="true"] {
   animation:
-    ft-rain-fall var(--fall-dur, 1.8s) linear var(--fall-delay, 0s) infinite,
+    ft-rain-fall var(--fall-dur, 1.4s) linear var(--fall-delay, 0s) infinite,
     ft-rain-pulse 3.5s ease-in-out calc(var(--fall-delay, 0s) / 2) infinite;
 }
 
