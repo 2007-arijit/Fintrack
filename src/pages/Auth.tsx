@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FinancialRainTimeline } from "@/components/visualizations/FinancialRainTimeline";
 import {
   Wallet,
   BookOpen,
@@ -45,6 +46,23 @@ export default function Auth() {
   const [showForgot, setShowForgot] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { signIn, signUp, resetPassword } = useAuth();
+
+  // Fast-paced cinematic raindrop animation displayed on initial arrival before entering sign-in
+  const [showIntro, setShowIntro] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("skip_intro") === "true") return false;
+    const lastViewed = sessionStorage.getItem("fintrack_intro_viewed_at");
+    if (lastViewed && Date.now() - Number(lastViewed) < 45000) {
+      return false;
+    }
+    return true;
+  });
+
+  const handleIntroComplete = () => {
+    sessionStorage.setItem("fintrack_intro_viewed_at", Date.now().toString());
+    setShowIntro(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,8 +119,22 @@ export default function Auth() {
     setShowForgot(false);
   };
 
+  if (showIntro) {
+    return (
+      <div className="fixed inset-0 z-50 bg-[#090807] animate-fade-in">
+        <FinancialRainTimeline
+          title="CLARITY IN EVERY NUMBER"
+          subtitle="Income, spending and plans in one honest record"
+          onComplete={handleIntroComplete}
+          onSkipToNext={handleIntroComplete}
+          autoRedirectSeconds={5}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="relative min-h-dvh bg-background lg:grid lg:grid-cols-[1.08fr_0.92fr]">
+    <div className="relative min-h-dvh bg-background animate-fade-in lg:grid lg:grid-cols-[1.08fr_0.92fr]">
       {/* Brand panel — editorial, not a marketing carousel. */}
       <aside className="relative hidden overflow-hidden border-r border-border/70 bg-atmosphere lg:flex lg:flex-col lg:justify-between lg:px-12 lg:py-10 xl:px-16">
         <div

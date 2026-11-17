@@ -50,70 +50,70 @@
   }
 }
 
-/* One column of glyphs. The entrance is staggered so the rain
-   reads as arriving from the top rather than appearing at once. */
+/* One column of glyphs. Positioned absolute, overflowing vertically */
 .ft-rain-stream {
   position: absolute;
   top: 0;
   height: 100%;
   pointer-events: none;
-  animation: ft-rain-stream-in 1.05s var(--ease-out-soft) var(--col-delay, 0s) both;
+  overflow: hidden;
+  opacity: var(--col-op, 1);
+  animation: ft-rain-stream-in 0.6s var(--ease-out-soft) var(--col-delay, 0s) both;
 }
 
 @keyframes ft-rain-stream-in {
   from {
     opacity: 0;
-    transform: translate3d(0, -14%, 0);
   }
   to {
     opacity: var(--col-op, 1);
-    transform: translate3d(0, 0, 0);
   }
 }
 
-/* Inner track overflows the column so the drift never exposes a
-   seam at the edges. Drift and pulse run on separate properties. */
+/* Inner track cascades downwards smoothly and fast like real rain */
 .ft-rain-stream-inner {
   position: absolute;
-  inset: -12% 0;
+  top: 0;
+  left: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  animation: ft-rain-drift var(--drift-dur, 20s) linear var(--drift-delay, 0s) infinite;
+  justify-content: flex-start;
+  animation: ft-rain-fall var(--fall-dur, 1.8s) linear var(--fall-delay, 0s) infinite;
   will-change: transform;
+}
+
+@keyframes ft-rain-fall {
+  0% {
+    transform: translate3d(0, -50%, 0);
+  }
+  100% {
+    transform: translate3d(0, 0%, 0);
+  }
 }
 
 .ft-rain-stream-inner[data-pulse="true"] {
   animation:
-    ft-rain-drift var(--drift-dur, 20s) linear var(--drift-delay, 0s) infinite,
-    ft-rain-pulse 8.5s ease-in-out calc(var(--drift-delay, 0s) / 2) infinite;
-}
-
-@keyframes ft-rain-drift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, var(--drift-offset, -6%), 0);
-  }
+    ft-rain-fall var(--fall-dur, 1.8s) linear var(--fall-delay, 0s) infinite,
+    ft-rain-pulse 3.5s ease-in-out calc(var(--fall-delay, 0s) / 2) infinite;
 }
 
 @keyframes ft-rain-pulse {
-  0%,
-  100% {
+  0%, 100% {
     opacity: 1;
+    filter: brightness(1);
   }
   50% {
-    opacity: 0.66;
+    opacity: 0.8;
+    filter: brightness(1.3);
   }
 }
 
 .ft-rain-glyph {
   display: block;
   font-family: var(--font-body);
-  font-weight: 500;
+  font-weight: 600;
   font-size: var(--g-size);
   font-variant-numeric: tabular-nums;
   line-height: var(--g-lh);
@@ -122,6 +122,16 @@
   transform: scale(var(--g-scale)) scaleX(var(--g-flip));
   text-shadow: 0 0 var(--g-glow) hsl(var(--g-hue) var(--g-sat) 58% / 0.4);
   user-select: none;
+  flex-shrink: 0;
+  padding: 1px 0;
+}
+
+.ft-rain-glyph[data-lead="true"] {
+  color: #ffffff;
+  opacity: 1;
+  font-weight: 700;
+  text-shadow: 0 0 10px hsl(var(--primary) / 0.9), 0 0 20px hsl(var(--primary) / 0.6);
+  filter: brightness(1.35);
 }
 
 /* Title: characters reveal, the block holds, then it zooms away. */

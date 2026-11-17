@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FinancialRainTimelineProps {
   title?: string;
   subtitle?: string;
   onSkipToNext?: () => void;
+  onComplete?: () => void;
+  autoRedirectSeconds?: number;
   className?: string;
 }
 
-const FINTRACK_GLYPHS = "₹$€£¥0123456789+%−•₹$€0123456789";
-const GLYPHS_PER_STREAM = 20;
+const FINTRACK_GLYPHS = "₹$€£¥₹$€0123456789%+-•*₹0123456789$9876543210";
+const GLYPHS_PER_STREAM = 18;
 
 function mulberry32(seed: number) {
   let a = seed;
@@ -33,15 +36,15 @@ interface GlyphData {
   light: number;
   hue: number;
   sat: string;
+  isLead: boolean;
 }
 
 interface StreamData {
   id: number;
   delay: number;
   opacity: number;
-  driftDuration: number;
-  driftDelay: number;
-  driftOffset: number;
+  fallDuration: number;
+  fallDelay: number;
   pulse: boolean;
   glyphs: GlyphData[];
 }
@@ -53,37 +56,38 @@ interface TitleChar {
 }
 
 /**
- * Self-running version of the financial-rain intro.
+ * High-performance, fast-paced financial rain intro.
  *
- * The previous build scrubbed every glyph from scroll position, which meant a
- * `calc()` recalculation for ~600 spans on each scroll tick. Here the whole
- * sequence is CSS-driven (delays + keyframes on opacity/transform only), so the
- * intro starts on its own, loops as ambient motion, and stays on the compositor.
+ * Renders cascading currency and numeric streams that fall smoothly and rapidly
+ * using hardware-accelerated CSS compositor transforms. Safe for low-end mobile.
  */
 export function FinancialRainTimeline({
   title = "CLARITY IN EVERY NUMBER",
-  subtitle = "Income, spending and plans in one place",
+  subtitle = "Income, spending and plans in one honest record",
   onSkipToNext,
+  onComplete,
+  autoRedirectSeconds = 5,
   className,
 }: FinancialRainTimelineProps) {
   const stageRef = useRef<HTMLElement>(null);
   const reducedMotion = usePrefersReducedMotion();
-  const [columnCount, setColumnCount] = useState(24);
+  const [columnCount, setColumnCount] = useState(20);
+  const [secondsRemaining, setSecondsRemaining] = useState(autoRedirectSeconds);
 
+  // Responsive column count for low-end devices
   useEffect(() => {
     const updateCols = () => {
       const w = window.innerWidth;
       if (w < 640) setColumnCount(12);
-      else if (w < 1024) setColumnCount(18);
-      else setColumnCount(24);
+      else if (w < 1024) setColumnCount(16);
+      else setColumnCount(22);
     };
     updateCols();
     window.addEventListener("resize", updateCols, { passive: true });
     return () => window.removeEventListener("resize", updateCols);
   }, []);
 
-  // Hold the timeline for one painted frame so the entrance never competes
-  // with the route's first layout and paint.
+  // Frame initialization
   useEffect(() => {
     const el = stageRef.current;
     if (!el || reducedMotion) return;
@@ -101,8 +105,7 @@ export function FinancialRainTimeline({
     };
   }, [reducedMotion]);
 
-  // Pause the ambient loop when the hero leaves the viewport or the tab hides,
-  // so it never competes with the gallery for frames.
+  // Pause when offscreen or tab hidden to preserve mobile battery
   useEffect(() => {
     const el = stageRef.current;
     if (!el || reducedMotion) return;
@@ -126,39 +129,75 @@ export function FinancialRainTimeline({
     };
   }, [reducedMotion]);
 
-  const streams = useMemo<StreamData[]>(() => {
-    const rand = mulberry32(20261115);
-    return Array.from({ length: columnCount }, (_, colIdx) => {
-      const isTealStream = colIdx % 5 === 3;
+  // Auto-redirect countdown timer
+  useEffect(() => {
+    if (!onComplete || autoRedirectSeconds <= 0) return;
 
-      const glyphs: GlyphData[] = Array.from({ length: GLYPHS_PER_STREAM }, () => {
-        const isTeal = isTealStream && rand() > 0.4;
-        const opacity = Number((0.14 + rand() * 0.72).toFixed(2));
+    const timer = setInterval(() => {
+      setSecondsRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          onComplete();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [onComplete, autoRedirectSeconds]);
+
+  // Keyboard shortcut to skip (Enter / Space / Escape)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
+        if (onComplete) onComplete();
+        else if (onSkipToNext) onSkipToNext();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onComplete, onSkipToNext]);
+
+  // Fast-paced rain columns
+  const streams = useMemo<StreamData[]>(() => {
+    const rand = mulberry32(20261117);
+    return Array.from({ length: columnCount }, (_, colIdx) => {
+      const isTealStream = colIdx % 5 === 2;
+
+      const glyphs: GlyphData[] = Array.from({ length: GLYPHS_PER_STREAM }, (_, gIdx) => {
+        const isTeal = isTealStream && rand() > 0.35;
+        // The first and middle glyphs act as leading glowing droplets
+        const isLead = gIdx === 0 || gIdx === 9;
+        const opacity = isLead ? 1 : Number((0.2 + (gIdx / GLYPHS_PER_STREAM) * 0.7).toFixed(2));
+
         return {
           char: FINTRACK_GLYPHS[Math.floor(rand() * FINTRACK_GLYPHS.length)],
-          sizePx: Number((10 + rand() * 15).toFixed(1)),
-          lineHeight: Number((0.7 + rand() * 1.2).toFixed(2)),
-          scale: Number((0.95 + rand() * 0.45).toFixed(2)),
-          flip: Number(((rand() > 0.5 ? 1 : -1) * (0.66 + rand() * 0.34)).toFixed(2)),
-          glowPx: Number((opacity > 0.55 ? 4 + rand() * 8 : 0).toFixed(1)),
+          sizePx: Number((11 + rand() * 10).toFixed(1)),
+          lineHeight: Number((0.9 + rand() * 0.3).toFixed(2)),
+          scale: Number((0.95 + rand() * 0.35).toFixed(2)),
+          flip: Number(((rand() > 0.5 ? 1 : -1) * (0.8 + rand() * 0.2)).toFixed(2)),
+          glowPx: isLead ? 12 : Number((opacity > 0.6 ? 4 + rand() * 6 : 0).toFixed(1)),
           opacity,
-          light: Number((32 + rand() * 26).toFixed(1)),
-          hue: isTeal ? 156 : 33 + Math.floor(rand() * 5),
-          sat: isTeal ? "46%" : "90%",
+          light: isLead ? 92 : Number((36 + rand() * 26).toFixed(1)),
+          hue: isTeal ? 156 : 38 + Math.floor(rand() * 8),
+          sat: isTeal ? "55%" : "92%",
+          isLead,
         };
       });
 
-      const driftDuration = Number((15 + rand() * 12).toFixed(1));
+      // Fast rainfall: 1.2s to 2.2s per complete fall cycle
+      const fallDuration = Number((1.2 + rand() * 1.0).toFixed(2));
+      // Pre-seed negative delay so rain is actively falling across the whole screen on mount
+      const fallDelay = Number((-rand() * fallDuration).toFixed(2));
 
       return {
         id: colIdx,
-        delay: Number((rand() * 0.45).toFixed(2)),
-        opacity: Number((0.5 + rand() * 0.45).toFixed(2)),
-        driftDuration,
-        // Start each column mid-cycle so the field never moves in lockstep.
-        driftDelay: Number((-rand() * driftDuration).toFixed(1)),
-        driftOffset: Number((-11 + rand() * 7).toFixed(1)),
-        pulse: rand() > 0.78,
+        delay: Number((rand() * 0.25).toFixed(2)),
+        opacity: Number((0.65 + rand() * 0.35).toFixed(2)),
+        fallDuration,
+        fallDelay,
+        pulse: rand() > 0.75,
         glyphs,
       };
     });
@@ -171,11 +210,11 @@ export function FinancialRainTimeline({
     return all.map((word) =>
       Array.from(word).map((char) => {
         const index = cursor++;
-        const stagger = (index / Math.max(1, total - 1)) * 0.85;
+        const stagger = (index / Math.max(1, total - 1)) * 0.75;
         return {
           char,
-          delay: Number((0.35 + stagger).toFixed(3)),
-          glowPx: 10,
+          delay: Number((0.25 + stagger).toFixed(3)),
+          glowPx: 12,
         } as TitleChar;
       }),
     );
@@ -203,13 +242,13 @@ export function FinancialRainTimeline({
           {title}
         </h1>
         <p className="relative mt-4 max-w-md text-sm text-muted-foreground">{subtitle}</p>
-        {onSkipToNext && (
+        {(onComplete || onSkipToNext) && (
           <button
             type="button"
-            onClick={onSkipToNext}
+            onClick={onComplete || onSkipToNext}
             className="relative mt-8 rounded-full border border-primary/40 bg-primary/10 px-5 py-2 text-xs font-medium tracking-wide text-primary transition-colors hover:bg-primary/20"
           >
-            Explore environments ↓
+            Enter FinTrack →
           </button>
         )}
       </section>
@@ -231,60 +270,64 @@ export function FinancialRainTimeline({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(64% 58% at 50% 48%, hsl(33 90% 56% / 0.1), transparent 72%), radial-gradient(45% 40% at 22% 82%, hsl(156 46% 45% / 0.06), transparent 70%)",
+            "radial-gradient(64% 58% at 50% 48%, hsl(33 90% 56% / 0.12), transparent 72%), radial-gradient(45% 40% at 22% 82%, hsl(156 46% 45% / 0.08), transparent 70%)",
         }}
       />
 
-      {/* Rain layer — CSS-only, loops as ambience */}
-      <div className="ft-rain-layer pointer-events-none absolute inset-0" aria-hidden="true">
-        {streams.map((stream) => (
-          <div
-            key={stream.id}
-            className="ft-rain-stream"
-            style={
-              {
-                left: `${(stream.id / columnCount) * 100}%`,
-                width: `${100 / columnCount}%`,
-                "--col-delay": `${stream.delay}s`,
-                "--col-op": stream.opacity,
-              } as React.CSSProperties
-            }
-          >
+      {/* Rain layer — Hardware-accelerated CSS compositor transforms */}
+      <div className="ft-rain-layer pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        {streams.map((stream) => {
+          // Double stacking for infinite, perfectly seamless cascading loop
+          const loopGlyphs = [...stream.glyphs, ...stream.glyphs];
+          return (
             <div
-              className="ft-rain-stream-inner"
-              data-pulse={stream.pulse ? "true" : "false"}
+              key={stream.id}
+              className="ft-rain-stream"
               style={
                 {
-                  "--drift-dur": `${stream.driftDuration}s`,
-                  "--drift-delay": `${stream.driftDelay}s`,
-                  "--drift-offset": `${stream.driftOffset}%`,
+                  left: `${(stream.id / columnCount) * 100}%`,
+                  width: `${100 / columnCount}%`,
+                  "--col-delay": `${stream.delay}s`,
+                  "--col-op": stream.opacity,
                 } as React.CSSProperties
               }
             >
-              {stream.glyphs.map((g, gIdx) => (
-                <span
-                  key={gIdx}
-                  className="ft-rain-glyph"
-                  style={
-                    {
-                      "--g-size": `${g.sizePx}px`,
-                      "--g-lh": g.lineHeight,
-                      "--g-scale": g.scale,
-                      "--g-flip": g.flip,
-                      "--g-glow": `${g.glowPx}px`,
-                      "--g-op": g.opacity,
-                      "--g-light": `${g.light}%`,
-                      "--g-hue": g.hue,
-                      "--g-sat": g.sat,
-                    } as React.CSSProperties
-                  }
-                >
-                  {g.char}
-                </span>
-              ))}
+              <div
+                className="ft-rain-stream-inner"
+                data-pulse={stream.pulse ? "true" : "false"}
+                style={
+                  {
+                    "--fall-dur": `${stream.fallDuration}s`,
+                    "--fall-delay": `${stream.fallDelay}s`,
+                  } as React.CSSProperties
+                }
+              >
+                {loopGlyphs.map((g, gIdx) => (
+                  <span
+                    key={gIdx}
+                    className="ft-rain-glyph"
+                    data-lead={g.isLead ? "true" : undefined}
+                    style={
+                      {
+                        "--g-size": `${g.sizePx}px`,
+                        "--g-lh": g.lineHeight,
+                        "--g-scale": g.scale,
+                        "--g-flip": g.flip,
+                        "--g-glow": `${g.glowPx}px`,
+                        "--g-op": g.opacity,
+                        "--g-light": `${g.light}%`,
+                        "--g-hue": g.hue,
+                        "--g-sat": g.sat,
+                      } as React.CSSProperties
+                    }
+                  >
+                    {g.char}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Character-by-character reveal, then a gentle zoom-out */}
@@ -319,30 +362,40 @@ export function FinancialRainTimeline({
         <div className="flex max-w-md flex-col items-center text-center">
           <p className="eyebrow text-primary/90">FinTrack Pulse</p>
           <p className="mt-4 text-sm leading-relaxed text-white/60">{subtitle}</p>
-          {onSkipToNext && (
+          {(onComplete || onSkipToNext) && (
             <button
               type="button"
-              onClick={onSkipToNext}
-              className="pointer-events-auto mt-7 inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/12 px-5 py-2.5 text-xs font-semibold text-primary backdrop-blur-sm transition-colors hover:border-primary/70 hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+              onClick={onComplete || onSkipToNext}
+              className="pointer-events-auto mt-7 inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/12 px-6 py-2.5 text-xs font-semibold text-primary backdrop-blur-sm transition-colors hover:border-primary/70 hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
             >
-              Enter the ledger
-              <span aria-hidden="true" className="ft-scroll-arrow">
-                ↓
-              </span>
+              Enter FinTrack
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           )}
         </div>
       </div>
 
-      {onSkipToNext && (
-        <button
-          type="button"
-          onClick={onSkipToNext}
-          className="ft-rain-skip absolute bottom-5 right-5 z-20 rounded-full border border-border/70 bg-background/70 px-3.5 py-1.5 text-[11px] font-medium text-muted-foreground backdrop-blur-md transition-colors hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          Skip to gallery ↓
-        </button>
-      )}
+      {/* Dynamic bottom redirect / skip bar */}
+      <div className="absolute bottom-5 inset-x-0 z-30 flex items-center justify-between px-5 sm:px-8 pointer-events-auto">
+        {onComplete ? (
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3.5 py-1.5 text-xs text-white/70 backdrop-blur-md">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
+            <span>Redirecting to Sign In in {secondsRemaining}s</span>
+          </div>
+        ) : (
+          <div />
+        )}
+
+        {(onComplete || onSkipToNext) && (
+          <button
+            type="button"
+            onClick={onComplete || onSkipToNext}
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-4 py-1.5 text-xs font-medium text-white/80 backdrop-blur-md transition-colors hover:border-primary/50 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            Skip to Sign In →
+          </button>
+        )}
+      </div>
     </section>
   );
 }

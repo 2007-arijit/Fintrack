@@ -3,6 +3,12 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "author": "Arijit Kayal <2007kayalarijit@gmail.com>",
+  "homepage": "https://github.com/2007-arijit/Fintrack",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/2007-arijit/Fintrack.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

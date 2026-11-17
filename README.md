@@ -47,7 +47,7 @@ A full-featured personal finance application to track income, expenses, budgets,
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/your-username/fintrack.git
+git clone https://github.com/2007-arijit/Fintrack.git
 cd fintrack
 npm install
 ```
@@ -179,6 +179,13 @@ fintrack/
 
 ---
 
+## Author
+
+Crafted & maintained by **[Arijit Kayal](https://github.com/2007-arijit)**.
+
+---
+
 ## License
 
-MIT
+MIT License © 2026 Arijit Kayal
+
