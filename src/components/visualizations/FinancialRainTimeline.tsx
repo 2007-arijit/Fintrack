@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import "@/styles/vision.css";
 
 interface FinancialRainTimelineProps {
   title?: string;
@@ -134,19 +135,17 @@ export function FinancialRainTimeline({
   useEffect(() => {
     if (!onComplete || autoRedirectSeconds <= 0) return;
 
-    const timer = setInterval(() => {
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          onComplete();
-          return 0;
-        }
-        return prev - 1;
-      });
+    if (secondsRemaining <= 0) {
+      onComplete();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setSecondsRemaining((prev) => Math.max(0, prev - 1));
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [onComplete, autoRedirectSeconds]);
+    return () => clearTimeout(timer);
+  }, [secondsRemaining, onComplete, autoRedirectSeconds]);
 
   // Keyboard shortcut to skip (Enter / Space / Escape)
   useEffect(() => {
@@ -361,9 +360,9 @@ export function FinancialRainTimeline({
 
       {/* Character-by-character reveal, then a gentle zoom-out */}
       <div className="ft-rain-title-wrap pointer-events-none absolute inset-0 grid place-items-center px-6">
-        <h1 className="ft-rain-title font-display" aria-label={title}>
+        <h1 className="ft-rain-title font-display flex flex-wrap justify-center items-center" aria-label={title}>
           {titleWords.map((chars, wIdx) => (
-            <span key={wIdx} className="ft-rain-word" aria-hidden="true">
+            <span key={wIdx} className="ft-rain-word mx-1.5 sm:mx-2.5 inline-flex" aria-hidden="true">
               {chars.map((c, cIdx) => (
                 <span
                   key={`${wIdx}-${cIdx}`}
@@ -378,9 +377,6 @@ export function FinancialRainTimeline({
                   {c.char}
                 </span>
               ))}
-              {wIdx < titleWords.length - 1 && (
-                <span className="ft-rain-space" aria-hidden="true" />
-              )}
             </span>
           ))}
         </h1>

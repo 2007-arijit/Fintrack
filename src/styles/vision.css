@@ -191,6 +191,7 @@
 
 .ft-rain-word {
   display: inline-flex;
+  margin: 0 0.25em;
 }
 
 .ft-rain-char {
